@@ -4,12 +4,15 @@ import random
 import base64
 import sqlite3
 import mercadopago
+import os
+from dotenv import load_dotenv # <--- Import the new library
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 logging.basicConfig(level=logging.INFO)
+# Read the tokens securely
 API_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 MP_ACCESS_TOKEN = os.getenv('MERCADO_PAGO_TOKEN')
 
