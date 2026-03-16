@@ -5,6 +5,7 @@ import base64
 import sqlite3
 import mercadopago
 import os
+import datetime # <--- NOVA BIBLIOTECA PARA LIDAR COM DATAS
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -17,6 +18,7 @@ load_dotenv()
 # Read the tokens securely
 API_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 MP_ACCESS_TOKEN = os.getenv('MERCADO_PAGO_TOKEN')
+ADMIN_ID = os.getenv('ADMIN_ID') # <--- ID NUMÉRICO DO ADMIN PARA O RELATÓRIO
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
@@ -36,7 +38,7 @@ E_VERIFICADO = '<tg-emoji emoji-id="5251203410396458957">✅</tg-emoji>'
 E_SALE = '<tg-emoji emoji-id="5406683434124859552">🛍️</tg-emoji>'
 
 # ==========================================
-# 2. DATA STORAGE & DATABASE
+# 2. DATA STORAGE & DATABASE (ATUALIZADO PARA MÉTRICAS)
 # ==========================================
 VIP_GROUP_LINK = "https://t.me/+kUgaXFWy31QyZDM5"
 
@@ -44,13 +46,23 @@ def init_db():
     conn = sqlite3.connect("bot_database.db")
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, status TEXT)''')
+    
+    # Tenta adicionar as novas colunas caso o banco já exista com a versão antiga
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN joined_date TEXT")
+        c.execute("ALTER TABLE users ADD COLUMN payment_clicks INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Colunas já existem, segue o jogo
+        
     conn.commit()
     conn.close()
 
 def add_user(user_id, status="free"):
     conn = sqlite3.connect("bot_database.db")
     c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO users (user_id, status) VALUES (?, ?)", (user_id, status))
+    today = datetime.date.today().isoformat()
+    # Adiciona usuário salvando a data de hoje
+    c.execute("INSERT OR IGNORE INTO users (user_id, status, joined_date, payment_clicks) VALUES (?, ?, ?, 0)", (user_id, status, today))
     conn.commit()
     conn.close()
 
@@ -61,6 +73,14 @@ def update_user_status(user_id, status):
     conn.commit()
     conn.close()
 
+def increment_payment_click(user_id):
+    conn = sqlite3.connect("bot_database.db")
+    c = conn.cursor()
+    # Soma +1 nos cliques de pagamento desse usuário
+    c.execute("UPDATE users SET payment_clicks = payment_clicks + 1 WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
 def get_users_by_status(status):
     conn = sqlite3.connect("bot_database.db")
     c = conn.cursor()
@@ -68,6 +88,30 @@ def get_users_by_status(status):
     users = [row[0] for row in c.fetchall()]
     conn.close()
     return users
+
+def get_daily_stats():
+    conn = sqlite3.connect("bot_database.db")
+    c = conn.cursor()
+    today = datetime.date.today().isoformat()
+    
+    # Usuários que entraram HOJE
+    c.execute("SELECT COUNT(*) FROM users WHERE joined_date = ?", (today,))
+    new_users = c.fetchone()[0]
+    
+    # Total geral de usuários
+    c.execute("SELECT COUNT(*) FROM users")
+    total_users = c.fetchone()[0]
+    
+    # Total de usuários que já geraram algum PIX
+    c.execute("SELECT COUNT(*) FROM users WHERE payment_clicks > 0")
+    total_clicks = c.fetchone()[0]
+    
+    # Total de assinantes pagos
+    c.execute("SELECT COUNT(*) FROM users WHERE status = 'paid'")
+    paid_users = c.fetchone()[0]
+    
+    conn.close()
+    return new_users, total_users, total_clicks, paid_users
 
 init_db()
 
@@ -96,7 +140,10 @@ VIDEO_IDS = [
    "BAACAgEAAxkBAAIeVmm4M9SxxmnjkXaYPcMe_Bzxv0TDAAKdBwACThTJRRq-SybBNY5EOgQ",
    "BAACAgEAAxkBAAIeWGm4M_PduKTUKo9nBz9HLa3N6iFTAAKfBwACThTJRVCyBZIEaTS9OgQ",
    "BAACAgEAAxkBAAIeWmm4NARVVIe400WONLx0QvYAAW7W0AACoAcAAk4UyUULSCi_3FzHoToE",
-   "BAACAgEAAxkBAAIeXGm4NBkPVy2LcEef0XiuoStpmyABAAKhBwACThTJReNfVqvI3Yh5OgQ"
+   "BAACAgEAAxkBAAIeXGm4NBkPVy2LcEef0XiuoStpmyABAAKhBwACThTJReNfVqvI3Yh5OgQ",
+   "BAACAgEAAxkBAAIew2m4XFilPo1eVgaDW2NJvBMgkITBAAK5BwACThTJRWaWHWS1PlMkOgQ",
+   "BAACAgEAAxkBAAIexWm4XG6WjRejXg8CKDa1C-s7dunWAAK6BwACThTJRQABVwo0rWHTbzoE",
+   "BAACAgEAAxkBAAIex2m4XIJmKCovloEXEX5CHlqu4gGUAAK8BwACThTJRawsqJNTxLLpOgQ"
 ]
 
 CATEGORIES_LIST = (
@@ -186,6 +233,9 @@ async def handle_about(callback: types.CallbackQuery):
 # --- MERCADO PAGO INTEGRATION ---
 @dp.callback_query(F.data.startswith("buy_"))
 async def handle_payment(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    increment_payment_click(user_id) # <--- REGISTRA QUE O USUÁRIO CLICOU EM COMPRAR
+    
     await callback.message.answer("⏳ Gerando seu PIX, aguarde um momento...")
     
     price = 12.90 if callback.data == "buy_mensal" else 25.90
@@ -195,7 +245,7 @@ async def handle_payment(callback: types.CallbackQuery):
         "transaction_amount": price,
         "description": title,
         "payment_method_id": "pix",
-        "payer": {"email": f"user_{callback.from_user.id}@telegrambot.com"}
+        "payer": {"email": f"user_{user_id}@telegrambot.com"}
     }
 
     result = await asyncio.to_thread(sdk.payment().create, payment_data)
@@ -258,7 +308,35 @@ async def handle_check_pay(callback: types.CallbackQuery):
         await callback.answer(f"Status: {status.upper()}. Pagamento ainda não identificado. Tente novamente em 10 segundos.", show_alert=True)
 
 # ==========================================
-# 6. LOOP DE RETENÇÃO (GRÁTIS)
+# 6. RELATÓRIO DIÁRIO DO ADMIN
+# ==========================================
+async def daily_report_loop():
+    if not ADMIN_ID:
+        logging.warning("ADMIN_ID não configurado. Relatório diário desativado.")
+        return
+        
+    while True:
+        # Pausa de 24 horas (86400 segundos) entre os relatórios
+        await asyncio.sleep(86400) 
+        
+        try:
+            new_users, total_users, total_clicks, paid_users = get_daily_stats()
+            
+            report = (
+                f"📊 <b>Relatório Diário do Bot</b> 📊\n\n"
+                f"👤 <b>Novos leads hoje:</b> {new_users}\n"
+                f"📈 <b>Total de usuários no bot:</b> {total_users}\n"
+                f"💳 <b>Geraram código PIX:</b> {total_clicks}\n"
+                f"✅ <b>Assinantes VIP Ativos:</b> {paid_users}\n\n"
+                f"<i>Continue com o bom trabalho! 🚀</i>"
+            )
+            
+            await bot.send_message(chat_id=int(ADMIN_ID), text=report, parse_mode="HTML")
+        except Exception as e:
+            logging.error(f"Erro ao enviar relatório diário: {e}")
+
+# ==========================================
+# 7. LOOP DE RETENÇÃO (GRÁTIS)
 # ==========================================
 async def preview_loop():
     while True:
@@ -287,6 +365,7 @@ async def preview_loop():
 
 async def main():
     asyncio.create_task(preview_loop())
+    asyncio.create_task(daily_report_loop()) # <--- INICIA O LOOP DO RELATÓRIO
     logging.info("Starting bot...")
     await dp.start_polling(bot)
 
