@@ -40,7 +40,7 @@ E_SALE = '<tg-emoji emoji-id="5406683434124859552">🛍️</tg-emoji>'
 # ==========================================
 # 2. DATA STORAGE & DATABASE (ATUALIZADO PARA MÉTRICAS)
 # ==========================================
-VIP_GROUP_LINK = "https://t.me/+kUgaXFWy31QyZDM5"
+VIP_GROUP_LINK = "https://t.me/+BUdOp33cjFg2OTIx"
 
 def init_db():
     conn = sqlite3.connect("bot_database.db")
