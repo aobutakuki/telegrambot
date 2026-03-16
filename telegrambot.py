@@ -5,13 +5,15 @@ import base64
 import sqlite3
 import mercadopago
 import os
-from dotenv import load_dotenv # <--- Import the new library
+from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 logging.basicConfig(level=logging.INFO)
+load_dotenv()
+
 # Read the tokens securely
 API_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 MP_ACCESS_TOKEN = os.getenv('MERCADO_PAGO_TOKEN')
@@ -20,13 +22,24 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
 
-# 2. DATA STORAGE
-active_users = set()
-paid_users = set() # Users who have paid will be moved here
+# ==========================================
+# 1. EMOJIS PREMIUM (TAGS HTML)
+# ==========================================
+E_CIFRAO = '<tg-emoji emoji-id="5197434882321567830">💲</tg-emoji>'
+E_RAIO = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
+E_SININHO = '<tg-emoji emoji-id="5458603043203327669">🔔</tg-emoji>'
+E_DIAMANTE = '<tg-emoji emoji-id="5427168083074628963">💎</tg-emoji>'
+E_FOGO = '<tg-emoji emoji-id="5424972470023104089">🔥</tg-emoji>'
+E_MEDALHA = '<tg-emoji emoji-id="5440539497383087970">🥇</tg-emoji>'
+E_AVIAO = '<tg-emoji emoji-id="5201691993775818138">💸</tg-emoji>'
+E_VERIFICADO = '<tg-emoji emoji-id="5251203410396458957">✅</tg-emoji>'
+E_SALE = '<tg-emoji emoji-id="5406683434124859552">🛍️</tg-emoji>'
 
+# ==========================================
+# 2. DATA STORAGE & DATABASE
+# ==========================================
 VIP_GROUP_LINK = "https://t.me/+kUgaXFWy31QyZDM5"
 
-# 2. DATABASE SETUP
 def init_db():
     conn = sqlite3.connect("bot_database.db")
     c = conn.cursor()
@@ -56,10 +69,11 @@ def get_users_by_status(status):
     conn.close()
     return users
 
-# Initialize DB on startup
 init_db()
 
-# Your File IDs
+# ==========================================
+# 3. CONTEÚDO (VÍDEOS E CATEGORIAS)
+# ==========================================
 VIDEO_IDS = [
    "BAACAgEAAxkBAAMPabIIvBdIxCDTmaeEpxVHbJq60qkAAl0HAAIjQpFFVqYFGvSIMtQ6BA",
    "BAACAgEAAxkBAAMNabIItjzRkIP0ZSVDzCibTEghBs8AAmAHAAIjQpFF_jRizylbOzI6BA",
@@ -85,26 +99,27 @@ VIDEO_IDS = [
    "BAACAgEAAxkBAAIeXGm4NBkPVy2LcEef0XiuoStpmyABAAKhBwACThTJReNfVqvI3Yh5OgQ"
 ]
 
-# Edit your categories here! It's formatted in a simple 10-item list.
 CATEGORIES_LIST = (
-    "🔥 Amadores\n"
-    "🔥 Profissionais\n"
-    "🔥 Fav3l4das\n"
-    "🔥 C0rn03s\n"
-    "🔥 Vaz4d0ss\n"
-    "🔥 N0vin44as\n"
-    "🔥 Esc0ndidos\n"
-    "🔥 Faculdade\n"
-    "🔥 VIP\n"
-    "🔥 ...e muito mais!"
+    f"{E_FOGO} Amadores\n"
+    f"{E_FOGO} Profissionais\n"
+    f"{E_FOGO} Fav3l4das\n"
+    f"{E_FOGO} C0rn03s\n"
+    f"{E_FOGO} Vaz4d0ss\n"
+    f"{E_FOGO} N0vin44as\n"
+    f"{E_FOGO} Esc0ndidos\n"
+    f"{E_FOGO} Faculdade\n"
+    f"{E_FOGO} VIP\n"
+    f"{E_FOGO} ...e muito mais!"
 )
 
-# 3. UI MENUS
+# ==========================================
+# 4. MENUS UI
+# ==========================================
 def main_menu():
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="💎 Mensal - R$ 12,90", callback_data="buy_mensal"))
-    builder.row(types.InlineKeyboardButton(text="👑 3 Meses - R$ 25,90", callback_data="buy_trimestral")) # <--- MUDOU AQUI
-    builder.row(types.InlineKeyboardButton(text="ℹ️ Sobre o Premium", callback_data="about"))
+    builder.row(types.InlineKeyboardButton(text="👑 3 Meses - R$ 25,90", callback_data="buy_trimestral"))
+    builder.row(types.InlineKeyboardButton(text="ℹ️ Sobre o VIP / Dúvidas", callback_data="about"))
     return builder.as_markup()
 
 def payment_menu(pix_code, payment_id):
@@ -113,15 +128,16 @@ def payment_menu(pix_code, payment_id):
     builder.row(types.InlineKeyboardButton(text="📋 Copiar Código PIX", copy_text=types.CopyTextButton(text=pix_code)))
     return builder.as_markup()
 
-# 4. HANDLERS
-
+# ==========================================
+# 5. HANDLERS
+# ==========================================
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
-    add_user(user_id, "free") # Saves to database
+    add_user(user_id, "free")
     
-    welcome_text = "👋 Bem vindo ao nosso bot exclusivo para conteudos amadores e profissionais!"
-    await message.answer(text=welcome_text)
+    welcome_text = f"<b>BEM VINDO AO BOT IMAGINE 24</b> {E_VERIFICADO}\n\nO seu bot exclusivo para conteúdos amadores e profissionais!"
+    await message.answer(text=welcome_text, parse_mode="HTML")
     
     if VIDEO_IDS:
         amount_to_send = min(3, len(VIDEO_IDS)) 
@@ -131,25 +147,49 @@ async def cmd_start(message: types.Message):
             await asyncio.sleep(0.5) 
             
     benefits_text = (
-        "🚀 **Não perca e assine agora para ter acesso completo a todas essas categorias:**\n\n"
+        f"{E_RAIO} <b>Não perca tempo e assine agora para ter acesso completo a todas as categorias:</b>\n\n"
         f"{CATEGORIES_LIST}\n\n"
-        "⭐ *Conteúdo original e exclusivo!*\n\n"
-        "👇 Escolha o seu plano abaixo:"
+        f"{E_SALE} <b>Promoção Ativa!</b> Preços reduzidos por tempo limitado.\n"
+        f"{E_AVIAO} <b>Ganhe Dinheiro:</b> Receba R$ 1,00 por cada membro indicado!\n\n"
+        f"👇 Escolha o seu plano abaixo:"
     )
-    await message.answer(text=benefits_text, reply_markup=main_menu(), parse_mode="Markdown")
+    await message.answer(text=benefits_text, reply_markup=main_menu(), parse_mode="HTML")
 
 @dp.message(F.video)
 async def get_video_id(message: types.Message):
     await message.reply(f"`{message.video.file_id}`", parse_mode="Markdown")
 
-# --- MERCADO PAGO INTEGRATION ---
+@dp.message(F.entities)
+async def get_emoji_id(message: types.Message):
+    for entity in message.entities:
+        if entity.type == "custom_emoji":
+            await message.reply(
+                f"🆔 **ID do Emoji Premium:**\n`{entity.custom_emoji_id}`\n\nBasta tocar no número acima para copiar!", 
+                parse_mode="Markdown"
+            )
+            return
 
+@dp.callback_query(F.data == "about")
+async def handle_about(callback: types.CallbackQuery):
+    about_text = (
+        f"{E_DIAMANTE} <b>SOBRE O NOSSO VIP</b> {E_DIAMANTE}\n\n"
+        f"Nosso sistema é <b>100% Automático</b> {E_RAIO}. Assim que você paga, a API libera seu acesso instantaneamente. Sem enrolação e sem precisar chamar atendente!\n\n"
+        f"<b>Por que confiar na gente?</b> {E_VERIFICADO}\n"
+        f"Não trabalhamos com modelo 'vitalício' falso. Em vez de roubar R$ 12,00 e sumir, a sua assinatura recorrente nos dá muito mais lucro a longo prazo. É um sistema onde você aproveita o conteúdo atualizado e nós aproveitamos também. Transparência total!\n\n"
+        f"{E_AVIAO} <b>Sistema de Indicações (Ganhe Dinheiro):</b>\n"
+        f"Membros podem convidar outros! A cada membro pagante que entrar, você ganha <b>R$ 1,00</b>. Junte o suficiente e tenha o seu VIP pago!\n\n"
+        f"👇 <i>Selecione um plano acima para começar!</i>"
+    )
+    await callback.message.answer(text=about_text, parse_mode="HTML")
+    await callback.answer()
+
+# --- MERCADO PAGO INTEGRATION ---
 @dp.callback_query(F.data.startswith("buy_"))
 async def handle_payment(callback: types.CallbackQuery):
     await callback.message.answer("⏳ Gerando seu PIX, aguarde um momento...")
     
     price = 12.90 if callback.data == "buy_mensal" else 25.90
-    title = "Premium Mensal" if callback.data == "buy_mensal" else "Premium 3 Meses" # <--- MUDOU AQUI
+    title = "Premium Mensal" if callback.data == "buy_mensal" else "Premium 3 Meses"
 
     payment_data = {
         "transaction_amount": price,
@@ -165,31 +205,26 @@ async def handle_payment(callback: types.CallbackQuery):
         payment_id = payment_info["id"]
         pix_code = payment_info["point_of_interaction"]["transaction_data"]["qr_code"]
         
-        # Extract base64 QR image and convert to bytes
         qr_b64 = payment_info["point_of_interaction"]["transaction_data"]["qr_code_base64"]
         qr_bytes = base64.b64decode(qr_b64)
         photo = BufferedInputFile(qr_bytes, filename="pix_qr.png")
 
+        caption_text = (
+            f"⚠️ <b>Pagamento PIX Gerado: {title}</b>\n\n"
+            f"{E_CIFRAO} Valor: <b>R$ {price:.2f}</b>\n\n"
+            f"{E_SININHO} {E_FOGO} <b>Falta pouco! Garanta sua vaga já e tenha acesso a mais de 1500 vídeos originais!</b> {E_RAIO}\n\n"
+            f"Escaneie o QR Code acima ou copie o código abaixo:"
+        )
+
         await callback.message.answer_photo(
             photo=photo,
-            caption=f"⚠️ **Pagamento PIX Gerado: {title}**\n\n💰 Valor: R$ {price:.2f}\n\nEscaneie o QR Code acima ou copie o código abaixo:",
+            caption=caption_text,
             reply_markup=payment_menu(pix_code, payment_id),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     else:
         await callback.message.answer("❌ Erro ao gerar PIX.")
     await callback.answer()
-
-@dp.message(F.entities)
-async def get_emoji_id(message: types.Message):
-    # Percorre os elementos da mensagem procurando por um emoji premium
-    for entity in message.entities:
-        if entity.type == "custom_emoji":
-            await message.reply(
-                f"🆔 **ID do Emoji Premium:**\n`{entity.custom_emoji_id}`\n\nBasta tocar no número acima para copiar!", 
-                parse_mode="Markdown"
-            )
-            return
 
 @dp.callback_query(F.data.startswith("check_"))
 async def handle_check_pay(callback: types.CallbackQuery):
@@ -201,20 +236,18 @@ async def handle_check_pay(callback: types.CallbackQuery):
     if status == "approved":
         user_id = callback.from_user.id
         
-        # Update user in Database to 'paid' so they stop getting the 10-minute loop
         update_user_status(user_id, "paid")
 
-        # 1. Send VIP Link & Thank You
-        await callback.message.answer(
-            "✅ **Pagamento Aprovado!**\n\n"
-            "Obrigado pelo pagamento!\n\n"
-            f"🔗 **[CLIQUE AQUI PARA ENTRAR NO GRUPO VIP]({VIP_GROUP_LINK})**\n\n"
-            "Enquanto você entra no grupo, aproveite essas prévias exclusivas:",
-            parse_mode="Markdown",
-            disable_web_page_preview=True
+        success_text = (
+            f"{E_VERIFICADO} <b>PAGAMENTO APROVADO!</b> {E_VERIFICADO}\n\n"
+            f"Muito obrigado pela compra! Seu acesso exclusivo foi liberado.\n\n"
+            f"🔗 <b><a href='{VIP_GROUP_LINK}'>CLIQUE AQUI PARA ENTRAR NO GRUPO VIP</a></b>\n\n"
+            f"{E_AVIAO} <b>Lembrete:</b> Você pode ganhar dinheiro! Indique o bot para amigos e ganhe R$ 1,00 por cada assinante novo.\n\n"
+            f"Enquanto você entra no grupo, aproveite essas prévias exclusivas:"
         )
         
-        # 2. Send 10 Videos
+        await callback.message.answer(text=success_text, parse_mode="HTML", disable_web_page_preview=True)
+        
         amount = min(10, len(VIDEO_IDS))
         selected_videos = random.sample(VIDEO_IDS, amount)
         for video_id in selected_videos:
@@ -224,18 +257,16 @@ async def handle_check_pay(callback: types.CallbackQuery):
     else:
         await callback.answer(f"Status: {status.upper()}. Pagamento ainda não identificado. Tente novamente em 10 segundos.", show_alert=True)
 
-@dp.callback_query(F.data == "about")
-async def handle_about(callback: types.CallbackQuery):
-    await callback.message.answer("O Premium dá acesso a todos os vídeos completos sem cortes e atualizações diárias! Entre agora e veja todo conteudo completo")
-    await callback.answer()
-
+# ==========================================
+# 6. LOOP DE RETENÇÃO (GRÁTIS)
+# ==========================================
 async def preview_loop():
     while True:
-        await asyncio.sleep(7200) # <--- MUDOU AQUI (7200 segundos = 2 horas)
+        await asyncio.sleep(7200) 
         if not VIDEO_IDS:
             continue 
             
-        free_users = get_users_by_status("free") # Pulls only free users from DB
+        free_users = get_users_by_status("free")
         for user_id in free_users: 
             try:
                 amount = min(2, len(VIDEO_IDS))
@@ -245,12 +276,12 @@ async def preview_loop():
                     await asyncio.sleep(0.5)
                 
                 loop_text = (
-                    "🔥 **Você não vai querer perder!** Assine agora para ver o conteúdo completo, "
-                    "veja todos os nossos grupos:\n\n"
+                    f"{E_FOGO} <b>Você não vai querer perder!</b> Assine agora para ver o conteúdo completo:\n\n"
                     f"{CATEGORIES_LIST}\n\n"
-                    "👇 Escolha o seu plano abaixo:"
+                    f"{E_SALE} <b>Aproveite a nossa promoção por tempo limitado!</b>\n\n"
+                    f"👇 Escolha o seu plano abaixo:"
                 )
-                await bot.send_message(chat_id=user_id, text=loop_text, reply_markup=main_menu(), parse_mode="Markdown")
+                await bot.send_message(chat_id=user_id, text=loop_text, reply_markup=main_menu(), parse_mode="HTML")
             except Exception:
                 pass
 
