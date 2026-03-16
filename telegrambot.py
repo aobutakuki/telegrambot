@@ -85,15 +85,18 @@ VIDEO_IDS = [
    "BAACAgEAAxkBAAIeXGm4NBkPVy2LcEef0XiuoStpmyABAAKhBwACThTJReNfVqvI3Yh5OgQ"
 ]
 
+# Edit your categories here! It's formatted in a simple 10-item list.
 CATEGORIES_LIST = (
-    "🔥 Amadores ⠀⠀⠀ 🔥 N0vin44as\n"
-    "🔥 Profissionais ⠀🔥 Esc0ndidos\n"
-    "🔥 Fav3l4das ⠀⠀⠀⠀ 🔥 Faculdade\n"
-    "🔥 C0rn03s ⠀⠀⠀ 🔥 VIP\n"
-    "🔥 Vaz4d0ss ⠀⠀⠀⠀ 🔥 L3sbicas\n"
-    "🔥 1nc3stxx ⠀⠀⠀ 🔥 H3ntai\n"
-    "🔥 Pai e filha ⠀⠀⠀ 🔥 Onl4 F4ns\n"
-    "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀🔥 Muito mais!🔥"
+    "🔥 Amadores\n"
+    "🔥 Profissionais\n"
+    "🔥 Fav3l4das\n"
+    "🔥 C0rn03s\n"
+    "🔥 Vaz4d0ss\n"
+    "🔥 N0vin44as\n"
+    "🔥 Esc0ndidos\n"
+    "🔥 Faculdade\n"
+    "🔥 VIP\n"
+    "🔥 ...e muito mais!"
 )
 
 # 3. UI MENUS
