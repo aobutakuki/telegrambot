@@ -77,10 +77,14 @@ VIDEO_IDS = [
    "BAACAgEAAxkBAAMxabIMN73_Q65AgrAkOUQ17n2wfhYAAnEHAAIjQpFFITlljbIVuqU6BA",
    "BAACAgEAAxkBAAMvabIMMSUAAQU7-tnYaJVWyWMrpe1jAAJwBwACI0KRRc0kTrcmZQtaOgQ",
    "BAACAgEAAxkBAAMzabIMVuODFafw2lou2g_gCS0u-XQAAnIHAAIjQpFFXchqsfQkQ4k6BA",
-   "BAACAgEAAxkBAAM1abIMW-Q103ofk2hLVU4MxdbQ3Y8AAnMHAAIjQpFFPP195kRR1eM6BA"
+   "BAACAgEAAxkBAAM1abIMW-Q103ofk2hLVU4MxdbQ3Y8AAnMHAAIjQpFFPP195kRR1eM6BA",
+   "BAACAgEAAxkBAAIeVGm4M7EkInHKFuWd3pxzcJbJ_mEeAAKcBwACThTJRUl5MeTp3eGWOgQ",
+   "BAACAgEAAxkBAAIeVmm4M9SxxmnjkXaYPcMe_Bzxv0TDAAKdBwACThTJRRq-SybBNY5EOgQ",
+   "BAACAgEAAxkBAAIeWGm4M_PduKTUKo9nBz9HLa3N6iFTAAKfBwACThTJRVCyBZIEaTS9OgQ",
+   "BAACAgEAAxkBAAIeWmm4NARVVIe400WONLx0QvYAAW7W0AACoAcAAk4UyUULSCi_3FzHoToE",
+   "BAACAgEAAxkBAAIeXGm4NBkPVy2LcEef0XiuoStpmyABAAKhBwACThTJReNfVqvI3Yh5OgQ"
 ]
 
-# Edit your categories here! It's formatted in 7 rows of 2 columns, plus the 15th at the bottom.
 CATEGORIES_LIST = (
     "🔥 Amadores ⠀⠀⠀ 🔥 N0vin44as\n"
     "🔥 Profissionais ⠀🔥 Esc0ndidos\n"
@@ -96,7 +100,7 @@ CATEGORIES_LIST = (
 def main_menu():
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="💎 Mensal - R$ 12,90", callback_data="buy_mensal"))
-    builder.row(types.InlineKeyboardButton(text="👑 Vitalício - R$ 25,90", callback_data="buy_vitalicio"))
+    builder.row(types.InlineKeyboardButton(text="👑 3 Meses - R$ 25,90", callback_data="buy_trimestral")) # <--- MUDOU AQUI
     builder.row(types.InlineKeyboardButton(text="ℹ️ Sobre o Premium", callback_data="about"))
     return builder.as_markup()
 
@@ -142,7 +146,7 @@ async def handle_payment(callback: types.CallbackQuery):
     await callback.message.answer("⏳ Gerando seu PIX, aguarde um momento...")
     
     price = 12.90 if callback.data == "buy_mensal" else 25.90
-    title = "Premium Mensal" if callback.data == "buy_mensal" else "Premium Vitalício"
+    title = "Premium Mensal" if callback.data == "buy_mensal" else "Premium 3 Meses" # <--- MUDOU AQUI
 
     payment_data = {
         "transaction_amount": price,
@@ -213,7 +217,7 @@ async def handle_about(callback: types.CallbackQuery):
 
 async def preview_loop():
     while True:
-        await asyncio.sleep(600) 
+        await asyncio.sleep(7200) # <--- MUDOU AQUI (7200 segundos = 2 horas)
         if not VIDEO_IDS:
             continue 
             
