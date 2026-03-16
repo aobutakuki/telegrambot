@@ -180,6 +180,17 @@ async def handle_payment(callback: types.CallbackQuery):
         await callback.message.answer("❌ Erro ao gerar PIX.")
     await callback.answer()
 
+@dp.message(F.entities)
+async def get_emoji_id(message: types.Message):
+    # Percorre os elementos da mensagem procurando por um emoji premium
+    for entity in message.entities:
+        if entity.type == "custom_emoji":
+            await message.reply(
+                f"🆔 **ID do Emoji Premium:**\n`{entity.custom_emoji_id}`\n\nBasta tocar no número acima para copiar!", 
+                parse_mode="Markdown"
+            )
+            return
+
 @dp.callback_query(F.data.startswith("check_"))
 async def handle_check_pay(callback: types.CallbackQuery):
     payment_id = callback.data.split("_")[1] 
